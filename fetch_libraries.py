@@ -1,102 +1,136 @@
-import json
 import os
+import urllib.parse
 import requests
 
-# GitHub Secrets에서 인증키 읽어오기
-API_KEY = os.environ.get("DATA4LIBRARY_AUTH_KEY")
+# 환경변수에서 키 가져오기
+DATA4_KEY = os.environ.get("DATA4LIBRARY_AUTH_KEY", "").strip()
+PORTAL_KEY = os.environ.get("PUBLIC_DATA_API_KEY", "").strip()
 
 
-def fetch_library_data(page_no=1, page_size=100):
-    """도서관 정보나루 API 호출"""
-    url = "http://data4library.kr/api/libSrch"
-    params = {
-        "authKey": API_KEY,
-        "pageNo": page_no,
-        "pageSize": page_size,
-        "format": "json",
-    }
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
+def fetch_library_data():
+    # 1. 공공데이터포털 (data.go.kr) 시도
+    api_key = PORTAL_KEY or DATA4_KEY
+    if api_key:
+        print("[1] 공공데이터포털 API 호출 시도...")
+        decoded_key = urllib.parse.unquote(api_key)
+        url = "http://api.data.go.kr/openapi/tn_pubr_public_lbrry_api"
+        params = {
+            "serviceKey": decoded_key,
+            "pageNo": "1",
+            "numOfRows": "50",
+            "type": "json",
+        }
         try:
-            data = response.json()
-            return data.get("response", {}).get("libs", [])
+            res = requests.get(url, params=params, timeout=15)
+            print(f"공공데이터 상태코드: {res.status_code}")
+            if res.status_code == 200:
+                data = res.json()
+                items = (
+                    data.get("response", {})
+                    .get("body", {})
+                    .get("items", [])
+                )
+                if items:
+                    print(f"공공데이터포털에서 {len(items)}개 수집 성공!")
+                    result = []
+                    for it in items:
+                        result.append({
+                            "name": it.get("lbrryNm", "-"),
+                            "address": it.get(
+                                "rdnmadr", it.get("lnmadr", "-")
+                            ),
+                            "tel": it.get("phoneNumber", "-"),
+                            "closed": it.get("rstde", "정보 없음"),
+                            "homepage": it.get("homepageUrl", ""),
+                        })
+                    return result
+            print(f"공공데이터포털 응답 내용: {res.text[:200]}")
         except Exception as e:
-            print(f"JSON 파싱 에러: {e}")
-            return []
-    print(f"API 요청 실패 (코드: {response.status_code})")
+            print(f"공공데이터포털 요청 중 예외: {e}")
+
+    # 2. 도서관 정보나루 (data4library.kr) 시도
+    naru_key = DATA4_KEY or PORTAL_KEY
+    if naru_key:
+        print("[2] 도서관 정보나루 API 호출 시도...")
+        url = "http://data4library.kr/api/libSrch"
+        params = {
+            "authKey": naru_key,
+            "pageNo": "1",
+            "pageSize": "50",
+            "format": "json",
+        }
+        try:
+            res = requests.get(url, params=params, timeout=15)
+            print(f"정보나루 상태코드: {res.status_code}")
+            if res.status_code == 200:
+                data = res.json()
+                libs = data.get("response", {}).get("libs", [])
+                if libs:
+                    print(f"도서관 정보나루에서 {len(libs)}개 수집 성공!")
+                    result = []
+                    for item in libs:
+                        lib = item.get("lib", {})
+                        result.append({
+                            "name": lib.get("libName", "-"),
+                            "address": lib.get("address", "-"),
+                            "tel": lib.get("tel", "-"),
+                            "closed": lib.get("closed", "정보 없음"),
+                            "homepage": lib.get("homepage", ""),
+                        })
+                    return result
+            print(f"도서관 정보나루 응답 내용: {res.text[:200]}")
+        except Exception as e:
+            print(f"정보나루 요청 중 예외: {e}")
+
     return []
 
 
 def generate_html(libs):
-    """티스토리용 반응형 테이블 HTML 생성"""
-    html = """
-    <style>
-        .lib-box { width: 100%; overflow-x: auto; margin: 20px 0; font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
-        .lib-table { width: 100%; border-collapse: collapse; min-width: 600px; font-size: 14px; }
-        .lib-table th { background-color: #f1f3f5; color: #333; font-weight: 600; padding: 12px 10px; border: 1px solid #dee2e6; text-align: left; }
-        .lib-table td { padding: 10px; border: 1px solid #dee2e6; color: #495057; }
-        .lib-table tr:hover { background-color: #f8f9fa; }
-        .badge-closed { display: inline-block; padding: 2px 8px; font-size: 12px; border-radius: 4px; background: #ffe3e3; color: #c92a2a; font-weight: bold; }
-        .btn-home { display: inline-block; padding: 4px 10px; font-size: 12px; background: #228be6; color: #fff !important; text-decoration: none; border-radius: 4px; }
-        .btn-home:hover { background: #1c7ed6; }
-    </style>
-    <div class="lib-box">
-        <table class="lib-table">
-            <thead>
-                <tr>
-                    <th>도서관명</th>
-                    <th>주소</th>
-                    <th>전화번호</th>
-                    <th>정기 휴관일</th>
-                    <th>홈페이지</th>
-                </tr>
-            </thead>
-            <tbody>
-    """
-
-    for item in libs:
-        lib = item.get("lib", {})
-        name = lib.get("libName", "-")
-        addr = lib.get("address", "-")
-        tel = lib.get("tel", "-")
-        closed = lib.get("closed", "정보 없음")
-        hp = lib.get("homepage", "")
-
-        hp_btn = (
-            f'<a href="{hp}" target="_blank" rel="noopener" class="btn-home">방문</a>'
+    rows = ""
+    for lib in libs:
+        hp = lib["homepage"]
+        link = (
+            f'<a href="{hp}" target="_blank" rel="noopener" style="display:inline-block;padding:4px 8px;background:#228be6;color:#fff;text-decoration:none;border-radius:4px;font-size:12px;">바로가기</a>'
             if hp
             else "-"
         )
-
-        html += f"""
-                <tr>
-                    <td><strong>{name}</strong></td>
-                    <td>{addr}</td>
-                    <td>{tel}</td>
-                    <td><span class="badge-closed">{closed}</span></td>
-                    <td>{hp_btn}</td>
-                </tr>
+        rows += f"""
+        <tr>
+            <td style="padding:10px;border:1px solid #dee2e6;font-weight:bold;">{lib['name']}</td>
+            <td style="padding:10px;border:1px solid #dee2e6;">{lib['address']}</td>
+            <td style="padding:10px;border:1px solid #dee2e6;">{lib['tel']}</td>
+            <td style="padding:10px;border:1px solid #dee2e6;"><span style="background:#ffe3e3;color:#c92a2a;padding:2px 6px;border-radius:4px;font-size:12px;">{lib['closed']}</span></td>
+            <td style="padding:10px;border:1px solid #dee2e6;text-align:center;">{link}</td>
+        </tr>
         """
 
-    html += """
+    if not rows:
+        rows = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#888;">도서관 데이터를 불러오지 못했습니다. API 키 및 요청을 확인하세요.</td></tr>'
+
+    return f"""
+    <div style="width:100%;overflow-x:auto;font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:20px 0;">
+        <table style="width:100%;border-collapse:collapse;min-width:650px;font-size:14px;">
+            <thead>
+                <tr style="background:#f1f3f5;color:#333;">
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:left;">도서관명</th>
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:left;">주소</th>
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:left;">전화번호</th>
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:left;">정기 휴관일</th>
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:center;">홈페이지</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows}
             </tbody>
         </table>
     </div>
     """
-    return html
 
 
 if __name__ == "__main__":
-    if not API_KEY:
-        print("경고: DATA4LIBRARY_AUTH_KEY가 설정되지 않았습니다.")
-
-    # 기본 100개 데이터 조회 (필요 시 page_no 조절)
-    libs = fetch_library_data(page_no=1, page_size=100)
-    print(f"조회된 도서관 수: {len(libs)}개")
-
-    # HTML 결과물 파일 생성
-    result_html = generate_html(libs)
+    libs = fetch_library_data()
+    print(f"최종 처리 건수: {len(libs)}개")
+    html_output = generate_html(libs)
     with open("library_list.html", "w", encoding="utf-8") as f:
-        f.write(result_html)
-
-    print("성공: library_list.html 파일 생성 완료")
+        f.write(html_output)
+    print("library_list.html 저장 완료")
