@@ -24,7 +24,7 @@ def fetch_library_data():
                 data = res.json()
                 libs = data.get("response", {}).get("libs", [])
                 if libs:
-                    print(f"도서관 정보나루 {len(libs)}개 수집 완료")
+                    print(f"도서관 정보나루 {len(libs)}개 수집 성공")
                     return [
                         {
                             "name": it["lib"].get("libName", "-"),
@@ -35,9 +35,9 @@ def fetch_library_data():
                         }
                         for it in libs
                     ]
-            print(f"정보나루 응답: {res.text[:150]}")
+            print(f"정보나루 응답: {res.text[:120]}")
         except Exception as e:
-            print(f"정보나루 통신 오류: {e}")
+            print(f"정보나루 오류: {e}")
 
     # 2. 공공데이터포털 시도
     portal_key = PORTAL_KEY or DATA4_KEY
@@ -61,7 +61,7 @@ def fetch_library_data():
                     .get("items", [])
                 )
                 if items:
-                    print(f"공공데이터포털 {len(items)}개 수집 완료")
+                    print(f"공공데이터 {len(items)}개 수집 성공")
                     return [
                         {
                             "name": it.get("lbrryNm", "-"),
@@ -72,25 +72,25 @@ def fetch_library_data():
                         }
                         for it in items
                     ]
-            print(f"공공데이터 응답: {res.text[:150]}")
+            print(f"공공데이터 응답: {res.text[:120]}")
         except Exception as e:
-            print(f"공공데이터 통신 오류: {e}")
+            print(f"공공데이터 오류: {e}")
 
-    # 3. API 키 활성화 대기 중 임시 기본 공공도서관 데이터셋 제공 (블로그 공백 방지)
+    # 3. API 승인 대기 중 임시 기본 전국 도서관 데이터셋 로드
     print("API 미활성화 상태 -> 기본 전국 대표 도서관 데이터셋 로드")
     return [
         {
             "name": "국립중앙도서관",
             "address": "서울특별시 서초구 반포대로 201",
             "tel": "02-590-0500",
-            "closed": "매월 둘째·넷째 월요일, 공휴일",
+            "closed": "매월 둘째·넷째 월요일, 법정공휴일",
             "homepage": "https://www.nl.go.kr",
         },
         {
             "name": "국회도서관",
             "address": "서울특별시 영등포구 의사당대로 1",
             "tel": "02-6788-4211",
-            "closed": "매월 둘째·넷째 토요일, 일요일 제외 법정공휴일",
+            "closed": "매월 둘째·넷째 토요일, 일요일 제외 공휴일",
             "homepage": "https://www.nanet.go.kr",
         },
         {
@@ -171,7 +171,7 @@ def generate_html(libs):
     for lib in libs:
         hp = lib["homepage"]
         link = (
-            f'<a href="{hp}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 12px;background:#1971c2;color:#ffffff!important;text-decoration:none;border-radius:4px;font-size:12px;font-weight:bold;">홈페이지</a>'
+            f'<a href="{hp}" target="_blank" rel="noopener" style="display:inline-block;padding:5px 12px;background:#1971c2;color:#ffffff!important;text-decoration:none;border-radius:4px;font-size:12px;font-weight:bold;">바로가기</a>'
             if hp
             else "-"
         )
@@ -208,7 +208,7 @@ def generate_html(libs):
                         <th style="width: 38%;">주소</th>
                         <th style="width: 15%;">전화번호</th>
                         <th style="width: 15%;">정기 휴관일</th>
-                        <th style="width: 10%; text-align:center;">바로가기</th>
+                        <th style="width: 10%; text-align:center;">홈페이지</th>
                     </tr>
                 </thead>
                 <tbody>
