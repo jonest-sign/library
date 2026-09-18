@@ -31,6 +31,7 @@ jobs:
       - name: Run library update script
         env:
           DATA4LIBRARY_AUTH_KEY: ${{ secrets.DATA4LIBRARY_AUTH_KEY }}
+          PUBLIC_DATA_API_KEY: ${{ secrets.PUBLIC_DATA_API_KEY }}
         run: |
           # 루트 디렉토리에 위치한 파이썬 스크립트 실행
           python fetch_libraries.py
