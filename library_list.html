@@ -1,27 +1,17 @@
 
-    <style>
-        .lib-box { width: 100%; overflow-x: auto; margin: 20px 0; font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
-        .lib-table { width: 100%; border-collapse: collapse; min-width: 600px; font-size: 14px; }
-        .lib-table th { background-color: #f1f3f5; color: #333; font-weight: 600; padding: 12px 10px; border: 1px solid #dee2e6; text-align: left; }
-        .lib-table td { padding: 10px; border: 1px solid #dee2e6; color: #495057; }
-        .lib-table tr:hover { background-color: #f8f9fa; }
-        .badge-closed { display: inline-block; padding: 2px 8px; font-size: 12px; border-radius: 4px; background: #ffe3e3; color: #c92a2a; font-weight: bold; }
-        .btn-home { display: inline-block; padding: 4px 10px; font-size: 12px; background: #228be6; color: #fff !important; text-decoration: none; border-radius: 4px; }
-        .btn-home:hover { background: #1c7ed6; }
-    </style>
-    <div class="lib-box">
-        <table class="lib-table">
+    <div style="width:100%;overflow-x:auto;font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:20px 0;">
+        <table style="width:100%;border-collapse:collapse;min-width:650px;font-size:14px;">
             <thead>
-                <tr>
-                    <th>도서관명</th>
-                    <th>주소</th>
-                    <th>전화번호</th>
-                    <th>정기 휴관일</th>
-                    <th>홈페이지</th>
+                <tr style="background:#f1f3f5;color:#333;">
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:left;">도서관명</th>
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:left;">주소</th>
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:left;">전화번호</th>
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:left;">정기 휴관일</th>
+                    <th style="padding:12px 10px;border:1px solid #dee2e6;text-align:center;">홈페이지</th>
                 </tr>
             </thead>
             <tbody>
-    
+                <tr><td colspan="5" style="text-align:center;padding:30px;color:#888;">도서관 데이터를 불러오지 못했습니다. API 키 및 요청을 확인하세요.</td></tr>
             </tbody>
         </table>
     </div>
