@@ -8,15 +8,14 @@ PORTAL_KEY = os.environ.get("PUBLIC_DATA_API_KEY", "").strip()
 
 
 def fetch_all_libraries():
-    """전국 도서관 전체 데이터를 페이지네이션으로 전수 수집"""
+    """전국 도서관 전체 데이터를 페이지 끝까지 전수 수집"""
     api_key = DATA4_KEY or PORTAL_KEY
     all_libraries = []
 
-    # 1. 도서관 정보나루 (data4library.kr) 전수 수집 시도
     if DATA4_KEY:
         print("[도서관 정보나루] 전국 전수 데이터 수집 시작...")
         page_no = 1
-        page_size = 500  # 한 번에 최대한 많이 호출
+        page_size = 500  # 한 페이지당 최대 호출 수
 
         while True:
             url = "http://data4library.kr/api/libSrch"
@@ -30,9 +29,13 @@ def fetch_all_libraries():
                 res = requests.get(url, params=params, timeout=15)
                 if res.status_code == 200:
                     data = res.json()
-                    libs = data.get("response", {}).get("libs", [])
+                    response_body = data.get("response", {})
+                    libs = response_body.get("libs", [])
+
+                    # 더 이상 반환된 도서관이 없으면 전체 수집 완료
                     if not libs:
-                        break  # 더 이상 데이터가 없으면 루프 종료
+                        print("모든 페이지 수집 완료.")
+                        break
 
                     for item in libs:
                         lib = item.get("lib", {})
@@ -48,22 +51,24 @@ def fetch_all_libraries():
                         f"정보나루 {page_no}페이지 수집 완료 (누적: {len(all_libraries)}개)"
                     )
 
-                    # 마지막 페이지 도달 확인
-                    total_count = data.get("response", {}).get("resultNum", 0)
-                    if len(all_libraries) >= total_count or len(libs) < page_size:
+                    # 가져온 목록 수가 요청한 page_size(500개)보다 적으면 마지막 페이지
+                    if len(libs) < page_size:
+                        print("마지막 페이지 도달.")
                         break
 
                     page_no += 1
-                    time.sleep(0.2)  # API 서버 보호를 위한 미세 딜레이
+                    time.sleep(0.3)
                 else:
-                    print(f"정보나루 응답 실패: {res.status_code}")
+                    print(f"정보나루 응답 오류: {res.status_code}")
                     break
             except Exception as e:
-                print(f"정보나루 통신 중 오류: {e}")
+                print(f"정보나루 통신 예외 발생: {e}")
                 break
 
         if all_libraries:
             return all_libraries
+
+    return all_libraries
 
     # 2. 공공데이터포털(data.go.kr) 전수 수집 시도 (정보나루 실패 시 보조)
     if PORTAL_KEY:
